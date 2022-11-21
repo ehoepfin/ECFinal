@@ -129,9 +129,109 @@ def sort_by_fitness(list_of_files):
 
   ind_fit = sorted(ind_fit, key=lambda ind_fit: ind_fit[1])
 
-  print(ind_fit)
+  #print(ind_fit)
 
   return ind_fit
+
+def open_file(filename):
+  opened_file = open(filename, 'r')
+  return opened_file
+
+'''crossover operators'''
+
+'''2-point crossover. the user specifies how many points there should be'''
+def two_point(ind1, ind2):
+  filepath1 = 'individuals/' + ind1
+  filepath2 = 'individuals/' + ind2
+
+  print("parent 1: ", ind1)
+  print("parent 2: ", ind2)
+
+  with open(filepath1, 'r') as f:
+    print(f.read())
+
+  with open(filepath2, 'r') as q:
+    print(q.read())
+  
+
+  ind1 = open_file(filepath1)
+  ind2 = open_file(filepath2)
+
+  content1 = ind1.readlines()
+  items1 = content1[7]
+
+  content2 = ind2.readlines()
+  items2 = content2[7]
+
+  notes1 = items1.split(" | ")
+  notes2 = items2.split(" | ")
+
+  print('original notes from p1: ', notes1)
+  print('original notes from p2: ', notes2)
+
+  count = 0
+  points = []
+  while count < 2:
+    point = random.randint(0,len(notes1)-2)
+    if point not in points:
+      points.append(point)
+      count += 1
+
+  offspring1notes = []
+  offspring2notes = []
+  switch = 0
+  i = 0
+
+  print("notes one: ", len(notes1))
+  while i < (len(notes1)-1):
+    if i in points:
+      switch += 1
+      offspring1notes.append(notes2[i])
+      offspring2notes.append(notes1[i])
+    if i not in points:
+      if switch % 2 == 1:
+        offspring1notes.append(notes1[i])
+        offspring2notes.append(notes2[i])
+      else:
+        offspring1notes.append(notes2[i])
+        offspring2notes.append(notes1[i])
+    i += 1
+  
+  header = abcheader('title', '1', 'C', '4/4', 'Reel', '120')
+
+  offspring1 = open(filepath1, 'w')
+  offspring2 = open(filepath2, 'w')
+
+  offspring1.write(header)
+  offspring2.write(header)
+
+  j = 0
+  n = 0
+
+  while j < len(offspring1notes):
+    content = offspring1notes[j] + " | "
+    print(content)
+    offspring1.write(content)
+    j += 1
+
+
+  while n < len(offspring2notes):
+    content = offspring2notes[n] + " | "
+    offspring2.write(content)
+    n += 1
+
+  print("OF1: ", filepath1)
+  print("OF2: ", filepath2)
+
+  with open(filepath1, 'r') as f:
+    print(f.read())
+
+  with open(filepath2, 'r') as q:
+    print(q.read())
+
+  return offspring1, offspring2
+
+#def mu_plus_lambda(ranked_files):
 
 pop_initialization(20)
 
@@ -144,10 +244,19 @@ for file in os.listdir(path):
   list_of_files.append(file)
 
 ranked = sort_by_fitness(list_of_files)
+print(ranked)
 
+i = 0
+while i < len(list_of_files):
+  file1 = list_of_files[i]
+  file2 = list_of_files[i+1]
+  print("Crossover #", i, "using ", file1, ' ', file2)
+  two_point(file1, file2)
+  i += 2
 
 
 '''parent selection'''
+
 
 
 '''crossover'''
