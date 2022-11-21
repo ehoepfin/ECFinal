@@ -144,9 +144,6 @@ def two_point(ind1, ind2):
   filepath1 = 'individuals/' + ind1
   filepath2 = 'individuals/' + ind2
 
-  print("parent 1: ", ind1)
-  print("parent 2: ", ind2)
-
   with open(filepath1, 'r') as f:
     print(f.read())
 
@@ -165,9 +162,6 @@ def two_point(ind1, ind2):
 
   notes1 = items1.split(" | ")
   notes2 = items2.split(" | ")
-
-  print('original notes from p1: ', notes1)
-  print('original notes from p2: ', notes2)
 
   count = 0
   points = []
@@ -210,7 +204,6 @@ def two_point(ind1, ind2):
 
   while j < len(offspring1notes):
     content = offspring1notes[j] + " | "
-    print(content)
     offspring1.write(content)
     j += 1
 
@@ -220,43 +213,42 @@ def two_point(ind1, ind2):
     offspring2.write(content)
     n += 1
 
-  print("OF1: ", filepath1)
-  print("OF2: ", filepath2)
-
-  with open(filepath1, 'r') as f:
-    print(f.read())
-
-  with open(filepath2, 'r') as q:
-    print(q.read())
-
   return offspring1, offspring2
 
 #def mu_plus_lambda(ranked_files):
+def main():
+  pop_initialization(20)
 
-pop_initialization(20)
+  num_gens = 5
+  gen_counter = 0
 
-'''setting up for a fitness function. each note gets assigned a value correpsonding to its position in the initial list'''
-path = 'individuals/'
-fitnesses = []
-list_of_files = []
+  while gen_counter < num_gens:
+    
+    
+    '''setting up for a fitness function. each note gets assigned a value correpsonding to its position in the initial list'''
+    path = 'individuals/'
+    list_of_files = []
 
-for file in os.listdir(path):
-  list_of_files.append(file)
+    for file in os.listdir(path):
+      list_of_files.append(file)
 
-ranked = sort_by_fitness(list_of_files)
-print(ranked)
+    ranked = sort_by_fitness(list_of_files)
+    print(ranked)
 
-i = 0
-while i < len(list_of_files):
-  file1 = list_of_files[i]
-  file2 = list_of_files[i+1]
-  print("Crossover #", i, "using ", file1, ' ', file2)
-  two_point(file1, file2)
-  i += 2
+    i = 0
+    while i < len(list_of_files):
+      file1 = list_of_files[i]
+      file2 = list_of_files[i+1]
+      two_point(file1, file2)
+      i += 2
+    
+    gen_counter += 1
 
+  '''code to play an individual. On my mac it opens garageband, you may need to install some kind of midi player to listen'''
+  s = converter.parse('individuals/individual1.abc')
+  s.show('midi')
 
 '''parent selection'''
-
 
 
 '''crossover'''
@@ -266,6 +258,10 @@ while i < len(list_of_files):
 
 
 '''fitness'''
+
+if __name__ == '__main__':
+  main()
+
 
 
 
