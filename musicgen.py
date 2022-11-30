@@ -239,7 +239,7 @@ def main():
   num_gens = 10
   gen_counter = 1
 
-  while gen_counter < num_gens:
+  while gen_counter <= num_gens:
     
     '''setting up for a fitness function. each note gets assigned a value correpsonding to its position in the initial list'''
     path = 'individuals/'
@@ -247,8 +247,11 @@ def main():
     
     for file in os.listdir(path):
       list_of_files.append(file)
+    if gen_counter == 1:
+      ranked = sort_by_fitness(list_of_files)
+    else:
+      ranked = new_gen
 
-    ranked = sort_by_fitness(list_of_files)
 
     mu = 5
     lbda = 15
@@ -258,7 +261,7 @@ def main():
       best_ind.append(ranked[i][0])
       i += 1
   
-    mu_comma_lambda(best_ind, list_of_files, mu, lbda)
+    new_gen = mu_comma_lambda(best_ind, list_of_files, mu, lbda)
 
     gen_counter += 1
 
