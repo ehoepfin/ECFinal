@@ -1,6 +1,8 @@
 import random
 import os
 import numpy as np
+
+from itertools import cycle
 from music21 import converter
 
 '''initialize population'''
@@ -42,7 +44,7 @@ def abcmusic(header):
       
       acc_prob = random.randint(1, 20)
 
-      if (acc_prob <= 15):
+      if (acc_prob >= 19):
         music += ' ' + accidentals[random.randint(0, 1)]
         
       music += str(random.choice(range))
@@ -140,113 +142,129 @@ def open_file(filename):
 '''crossover operators'''
 
 '''2-point crossover. the user specifies how many points there should be'''
-def two_point(ind1, ind2):
+def n_point(ind1, ind2, child_files):
   filepath1 = 'individuals/' + ind1
   filepath2 = 'individuals/' + ind2
 
-  with open(filepath1, 'r') as f:
-    print(f.read())
-
-  with open(filepath2, 'r') as q:
-    print(q.read())
-  
-
+  #read both individual files
   ind1 = open_file(filepath1)
   ind2 = open_file(filepath2)
 
+  #read in the line of note values for each individual
   content1 = ind1.readlines()
-  items1 = content1[7]
+  
+  notes1 = content1[7]
 
   content2 = ind2.readlines()
-  items2 = content2[7]
-
-  notes1 = items1.split(" | ")
-  notes2 = items2.split(" | ")
-
-  count = 0
-  points = []
-  while count < 2:
-    point = random.randint(0,len(notes1)-2)
-    if point not in points:
-      points.append(point)
-      count += 1
-
-  offspring1notes = []
-  offspring2notes = []
-  switch = 0
-  i = 0
-
-  print("notes one: ", len(notes1))
-  while i < (len(notes1)-1):
-    if i in points:
-      switch += 1
-      offspring1notes.append(notes2[i])
-      offspring2notes.append(notes1[i])
-    if i not in points:
-      if switch % 2 == 1:
-        offspring1notes.append(notes1[i])
-        offspring2notes.append(notes2[i])
-      else:
-        offspring1notes.append(notes2[i])
-        offspring2notes.append(notes1[i])
-    i += 1
   
+  notes2 = content2[7]
+
+  #split both pieces into measures
+  notes1 = notes1.split(" | ")
+  notes2 = notes2.split(" | ")
+
+  offspr = []
+  note_num = 0
+
+  #performs the crossover operation by going through each note and performing a 2 point crossover
+  while note_num < len(notes1):
+    if note_num < 3:
+      offspr.append(notes1[note_num])
+    if note_num > 2 & note_num < 6:
+      offspr.append(notes2[note_num])
+    else:
+      offspr.append(notes1[note_num])
+    note_num += 1
+
+  #write to the correct file, one of the unused child files. 
+  filename = child_files[-1]
+  child_files.pop()
+  offspring = open('individuals/' + filename, 'w')
+
   header = abcheader('title', '1', 'C', '4/4', 'Reel', '120')
 
-  offspring1 = open(filepath1, 'w')
-  offspring2 = open(filepath2, 'w')
+  offspring.write(header)
 
-  offspring1.write(header)
-  offspring2.write(header)
+  measure = 0
+  while measure < len(offspr):
+    offspring.write(offspr[measure] + ' | ')
+    measure += 1
 
-  j = 0
+  offspring = filename
+
+  return offspring, child_files
+
+  
+def mu_comma_lambda(best_ind, files, mu, lbda):
+  
+  lbda_children = []
+  new_pop = []
   n = 0
+  list_counter = 0
 
-  while j < len(offspring1notes):
-    content = offspring1notes[j] + " | "
-    offspring1.write(content)
-    j += 1
+  children = [x for x in files if x not in best_ind]
 
+  
+  while n < lbda:
+    if list_counter < mu-1:
+      file1 = best_ind[list_counter]
+      file2 = best_ind[list_counter + 1]
+      list_counter += 1
+    else:
+      list_counter = 0
+      file1 = best_ind[list_counter]
+      file2 = best_ind[list_counter + 1]
+      list_counter += 1
 
-  while n < len(offspring2notes):
-    content = offspring2notes[n] + " | "
-    offspring2.write(content)
+    offspring, children = n_point(file1, file2, children)
+    
+
+    lbda_children.append(offspring)
     n += 1
 
-  return offspring1, offspring2
+  lbda_children = sort_by_fitness(lbda_children)
+    
+  for ind in lbda_children[:lbda]:
+    new_pop.append(ind)
 
-#def mu_plus_lambda(ranked_files):
+
+  print("new Population: ", new_pop)
+
+  return new_pop
+    
+
 def main():
   pop_initialization(20)
 
-  num_gens = 5
-  gen_counter = 0
+  num_gens = 10
+  gen_counter = 1
 
   while gen_counter < num_gens:
-    
     
     '''setting up for a fitness function. each note gets assigned a value correpsonding to its position in the initial list'''
     path = 'individuals/'
     list_of_files = []
-
+    
     for file in os.listdir(path):
       list_of_files.append(file)
 
     ranked = sort_by_fitness(list_of_files)
-    print(ranked)
 
+    mu = 5
+    lbda = 15
+    best_ind = []
     i = 0
-    while i < len(list_of_files):
-      file1 = list_of_files[i]
-      file2 = list_of_files[i+1]
-      two_point(file1, file2)
-      i += 2
-    
+    while i < mu:
+      best_ind.append(ranked[i][0])
+      i += 1
+  
+    mu_comma_lambda(best_ind, list_of_files, mu, lbda)
+
     gen_counter += 1
 
   '''code to play an individual. On my mac it opens garageband, you may need to install some kind of midi player to listen'''
-  s = converter.parse('individuals/individual1.abc')
-  s.show('midi')
+  #s = converter.parse('individuals/individual1.abc')
+  #s.show('midi')
 
 '''parent selection'''
 
@@ -260,6 +278,7 @@ def main():
 '''fitness'''
 
 if __name__ == '__main__':
+  
   main()
 
 
