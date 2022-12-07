@@ -67,7 +67,7 @@ def initial_abc_writer(filename):
     file_contents += music
 
     #TEST
-    print(str(filename) + ' contents: ' + file_contents)    
+    #print(str(filename) + ' contents: ' + file_contents)    
     abcfile = open(filename, 'w')
     abcfile.write(file_contents)
     abcfile.close() 
@@ -90,9 +90,9 @@ def abc_writer(filename, notes):
     global needs_first_tuple
     if needs_first_tuple == True:
         path = filepath + filename[0]
-        print('filename for writer: ', path)
+        #print('filename for writer: ', path)
         offspring = open(path, 'w')
-    #print('ERROR ', filename)
+    
     else:
         offspring = open(filepath + filename, 'w')
 
@@ -124,7 +124,8 @@ def distance_fit(filename):
              'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
     #print('ind: ', filename)
     #file = filename
-
+    #indfile = open(filepath + filename, 'r')
+    
     if filename[0] == 'i':
         indfile = open(filepath + filename, 'r')
     else:
@@ -173,7 +174,7 @@ def sort_by_fitness(list_of_files):
     i = 0
     new_list = []
 
-    print('file list: ', list_of_files)
+    #print('file list: ', list_of_files)
     #remove old fitnesses for re-evaluation
     #new_list = [x[0] for x in list_of_files]
     #print(new_list)
@@ -181,6 +182,10 @@ def sort_by_fitness(list_of_files):
     '''if file[1] = 0, then do current.
     if not, then do the first of the tuple'''
     for ind in list_of_files:
+        fitness = distance_fit(ind)
+        complete_ind = ind, fitness
+        ind_fit.append(complete_ind)
+        '''
         if len(ind[0]) == 3:
             ind = ind[0][0]
             #print('ind in fitness: ', ind)
@@ -192,6 +197,7 @@ def sort_by_fitness(list_of_files):
             fitness = distance_fit(ind)
             complete_ind = ind, fitness
             ind_fit.append(complete_ind)
+            '''
     '''
     global is_random
     global needs_first_tuple
@@ -221,16 +227,20 @@ def open_file(filename):
 '''two point crossover, may be too aggressive for this field'''
 def two_point(ind1, ind2, child_files):
     if len(child_files) > 0:
-        print('ind1: ', ind1[0])
-        print('length: ', len(ind1))
+        #print('ind1: ', ind1[0])
+        #print('length: ', len(ind1))
+        filepath1 = ind1
+        filepath2 = ind2
+
+        '''
         if len(ind1) == 2:
             filepath1 = ind1[0]
             filepath2 = ind2[0]
         else:
             filepath1 = ind1
             filepath2 = ind2
-
-        print('individual check', filepath1)
+        '''
+        #print('individual check', filepath1)
 
         #read both individual files
         ind1 = open_file(filepath1)
@@ -261,7 +271,7 @@ def two_point(ind1, ind2, child_files):
                 offspr.append(notes1[note_num])
             note_num += 1
 
-        print('offspring: ', offspr)
+        #print('offspring: ', offspr)
         #write to the correct file, one of the unused child files.
         
         filename = child_files[-1]
@@ -270,7 +280,7 @@ def two_point(ind1, ind2, child_files):
         if len(filename) == 2:
             filename = filename[0]
 
-        print('filename: ', filename)
+        #print('filename: ', filename)
 
         abc_writer(filename, offspr)
         
@@ -278,9 +288,48 @@ def two_point(ind1, ind2, child_files):
     return filename, child_files
 
 '''future mutation operator'''
-def mutation(list_of_files):
-    return list_of_files
+def mutation(list_of_files, mut_prob, gene_prob):
 
+    note_range = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E', 'F',
+                  'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
+    
+    i = 0
+    probs_ind = []
+    while i < len(list_of_files):
+        rand_mut = random.uniform(0, 1)
+        probs_ind.append(rand_mut)
+
+    probs_note = []
+    while n < 100:
+        rand_mut = random.uniform(0,1)
+        probs_note.append(rand_mut)
+
+    
+    piece = 0
+    for filename in list_of_files:
+        if probs_ind[piece] <= mut_prob:
+            new_music = []
+            individual = open_file(filename)
+            content = individual.readlines()
+            music = content[7]
+            measures = music.split(' | ')
+            for measure in measures:
+                new_measure = []
+                notes = measure.split()
+                new_notes = ''
+                n = 0
+                values = notes in note_range
+                while n < len(notes):
+                    if (notes[n] in note_range) and (probs_note[n] <= gene_prob):
+                        up_down = random.randrange(-1,1)
+                        new = note_range.index(notes[n])
+                        new_notes += note_range[new + up_down]
+                    else:
+                        new_notes += notes[n]
+                new_measure.append(new_notes)
+        abc_writer(filename, new_music)
+    return list_of_files
+                
 '''mu comma lambda selection. also runs the operator methods. this should be more user friendly and easier to change operators.'''
 def mu_comma_lambda(files, mu, lbda, xo, mut):
 
@@ -300,6 +349,9 @@ def mu_comma_lambda(files, mu, lbda, xo, mut):
 
     children = files 
 
+    if len(children[0]) == 2:
+        children = [x[0] for x in children]
+
     #find the top mu parents out of the ranked by fitness files. 
     #takes the top 5 individuals and creates a list as long as will be needed for crossover
     while n < lbda:
@@ -314,42 +366,61 @@ def mu_comma_lambda(files, mu, lbda, xo, mut):
             file1 = best_ind[list_counter]
             file2 = best_ind[list_counter + 1]
             list_counter += 1
-
+        
         #use the crossover operator
         if xo == 'two_point':
             offspring, children = two_point(file1, file2, children)
-
+            lbda_children.append(offspring)
+        
         #use the mutation operator
         if mut == 'mutation':
-            mutation(children)
-
-        print('offspring: ', offspring)
-
-        #return the new population
-        lbda_children.append(offspring)
-        print('lambda children: ', lbda_children)
+            lbda_children = mutation(children, 0.5, 0.5)
 
         #assign fitness to new offspring
         
         for ind in lbda_children:
-            print('ind: ', ind)
-            
+            #print('ind: ', ind)
+            fitness = distance_fit(ind)
+            complete_ind = ind, fitness
+            new_pop.append(complete_ind)
+            '''
             if len(ind[0]) == 3:
                 ind = ind[0][0]
-                print('ind in fitness: ', ind)
+                #print('ind in fitness: ', ind)
                 fitness = distance_fit(ind)
                 complete_ind = ind, fitness
                 new_pop.append(complete_ind)
             else:
-                print('ind in fitness: ', ind)
+                #print('ind in fitness: ', ind)
                 fitness = distance_fit(ind)
                 complete_ind = ind, fitness
                 new_pop.append(complete_ind)
-
+            '''
         n+=1
-        print('n: ', n)
+        #print('n: ', n)
 
     return new_pop
+
+def print_statistics(population, gen):
+    best_individual = ''
+    best_fitness = 1000
+    worst_fitness = 0
+    worst_individual = ''
+    all_fitnesses = []
+
+    for individual, fitness in population:
+        if fitness < best_fitness:
+            best_individual = individual
+            best_fitness = fitness
+        if fitness > worst_fitness:
+            worst_individual = individual
+            worst_fitness = fitness
+        all_fitnesses.append(fitness)
+
+    average_fitness = sum(all_fitnesses)/len(all_fitnesses)
+
+    statistics = f'{gen}\t{best_individual}, {best_fitness}\t{average_fitness}\t{worst_individual}, {worst_fitness}\t'
+    print(statistics)
 
 def main():
     pop_initialization(21)
@@ -365,17 +436,17 @@ def main():
 
     new_pop = list_of_files
     
+    print('gen\tbest individual\taverage fitness\tworst individual')
     #repeat for each generation
     while gen_counter <= num_gens:
 
         #send list of files to mu_comma_lambda for evaluation
-        new_pop = mu_comma_lambda(new_pop, 3, 21, 'two_point', 'mutation')
-        print('gen count:' , gen_counter)
+        new_pop = mu_comma_lambda(new_pop, 3, 21, 'two', 'mutation')
+        print('gen number:' , gen_counter)
+        print_statistics(new_pop, gen_counter)
 
         gen_counter += 1
         
-
-
 if __name__ == '__main__':
 
     #saves the current version of code and output for the records.
