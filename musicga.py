@@ -229,22 +229,13 @@ def two_point(ind1, ind2, child_files):
     if len(child_files) > 0:
         #print('ind1: ', ind1[0])
         #print('length: ', len(ind1))
-        filepath1 = ind1
-        filepath2 = ind2
-
-        '''
         if len(ind1) == 2:
-            filepath1 = ind1[0]
-            filepath2 = ind2[0]
-        else:
-            filepath1 = ind1
-            filepath2 = ind2
-        '''
-        #print('individual check', filepath1)
+            ind1 = ind1[0]
+            ind2 = ind2[0]
 
         #read both individual files
-        ind1 = open_file(filepath1)
-        ind2 = open_file(filepath2)
+        ind1 = open_file(ind1)
+        ind2 = open_file(ind2)
 
 
         #read in the line of note values for each individual
@@ -287,48 +278,56 @@ def two_point(ind1, ind2, child_files):
 
     return filename, child_files
 
-'''future mutation operator'''
-def mutation(list_of_files, mut_prob, gene_prob):
-
+'''takes a list of measures and splits them into a list of a notes'''
+def split_measures(filename, measures, gene_prob):
     note_range = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E', 'F',
                   'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
-    
-    i = 0
-    probs_ind = []
-    while i < len(list_of_files):
-        rand_mut = random.uniform(0, 1)
-        probs_ind.append(rand_mut)
-
+    #print('filename: ', filename)
+    n = 0
     probs_note = []
     while n < 100:
-        rand_mut = random.uniform(0,1)
+        rand_mut = random.uniform(0, 1)
         probs_note.append(rand_mut)
-
+        n += 1
     
-    piece = 0
-    for filename in list_of_files:
-        if probs_ind[piece] <= mut_prob:
-            new_music = []
-            individual = open_file(filename)
-            content = individual.readlines()
-            music = content[7]
-            measures = music.split(' | ')
-            for measure in measures:
-                new_measure = []
-                notes = measure.split()
-                new_notes = ''
-                n = 0
-                values = notes in note_range
-                while n < len(notes):
-                    if (notes[n] in note_range) and (probs_note[n] <= gene_prob):
-                        up_down = random.randrange(-1,1)
-                        new = note_range.index(notes[n])
-                        new_notes += note_range[new + up_down]
-                    else:
-                        new_notes += notes[n]
-                new_measure.append(new_notes)
-        abc_writer(filename, new_music)
-    return list_of_files
+    n = 0
+    m = 0
+    new_music = []
+
+    for measure in measures:
+        
+        notes = measure.split()
+        new_notes = ''
+        #values = notes in note_range
+        while m < len(notes):
+            if (notes[m] in note_range) and (probs_note[n] <= gene_prob):
+                up_down = random.randrange(-1, 1)
+                new = note_range.index(notes[m])
+                new_notes += note_range[new + up_down]
+                n += 1
+            else:
+                new_notes += notes[m]
+            m += 1
+        if new_notes == '':
+            new_notes = measure
+        #print('new measure: ', new_notes)    
+        new_music.append(new_notes)
+    #print('new_music: ', new_music)    
+    abc_writer(filename, new_music)
+
+        
+'''future mutation operator'''
+def mutation(ind, mut_prob, gene_prob):
+    
+    probs_ind = random.uniform(0,1)
+    
+    if probs_ind <= mut_prob:
+        individual = open_file(ind)
+        content = individual.readlines()
+        music = content[7]
+        measures = music.split(' | ')
+        split_measures(ind, measures, gene_prob)
+    return ind
                 
 '''mu comma lambda selection. also runs the operator methods. this should be more user friendly and easier to change operators.'''
 def mu_comma_lambda(files, mu, lbda, xo, mut):
@@ -349,8 +348,11 @@ def mu_comma_lambda(files, mu, lbda, xo, mut):
 
     children = files 
 
+    #print('children: ', children[0][0])
+
     if len(children[0]) == 2:
         children = [x[0] for x in children]
+        #print('children: ', children)
 
     #find the top mu parents out of the ranked by fitness files. 
     #takes the top 5 individuals and creates a list as long as will be needed for crossover
@@ -367,35 +369,28 @@ def mu_comma_lambda(files, mu, lbda, xo, mut):
             file2 = best_ind[list_counter + 1]
             list_counter += 1
         
+        
         #use the crossover operator
         if xo == 'two_point':
             offspring, children = two_point(file1, file2, children)
-            lbda_children.append(offspring)
-        
+        if xo != 'two_point':
+            offspring = children[n]
+            
         #use the mutation operator
         if mut == 'mutation':
-            lbda_children = mutation(children, 0.5, 0.5)
+            offspring = mutation(offspring, 0.5, 0.5)
+            
+        lbda_children.append(offspring)
 
+        #print('lambda children: ', lbda_children)
         #assign fitness to new offspring
         
-        for ind in lbda_children:
+        #for ind in lbda_children:
             #print('ind: ', ind)
-            fitness = distance_fit(ind)
-            complete_ind = ind, fitness
-            new_pop.append(complete_ind)
-            '''
-            if len(ind[0]) == 3:
-                ind = ind[0][0]
-                #print('ind in fitness: ', ind)
-                fitness = distance_fit(ind)
-                complete_ind = ind, fitness
-                new_pop.append(complete_ind)
-            else:
-                #print('ind in fitness: ', ind)
-                fitness = distance_fit(ind)
-                complete_ind = ind, fitness
-                new_pop.append(complete_ind)
-            '''
+        fitness = distance_fit(offspring)
+        complete_ind = offspring, fitness
+        new_pop.append(complete_ind)
+       
         n+=1
         #print('n: ', n)
 
@@ -441,8 +436,8 @@ def main():
     while gen_counter <= num_gens:
 
         #send list of files to mu_comma_lambda for evaluation
-        new_pop = mu_comma_lambda(new_pop, 3, 21, 'two', 'mutation')
-        print('gen number:' , gen_counter)
+        new_pop = mu_comma_lambda(new_pop, 3, 21, 'two_point', 'mutation')
+        #print('gen number:' , gen_counter)
         print_statistics(new_pop, gen_counter)
 
         gen_counter += 1
