@@ -15,18 +15,17 @@ these include population initialization, headers of the files, and filenames
 '''
 filepath = 'individuals/'
 note_lengths = ['1', '2', '3', '4']
-letters = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
-#note_range = ['c', '^c', 'd', '^d', 'e', 'f', '^f', 'g', '^g', 'a', '_b', 'b', 'C', '^C', 'D', '_E', 'E', 'F', '^F',
-#              'G', '^G', 'A', '_B', 'B', 'c\'', '^c\'', 'd\'', '_e\'', 'e\'', 'f\'', '^f\'', 'g\'', '^g\'', 'a\'', '_b\'', 'b\'']
-note_range = ['g', '^g', 'a', '_b', 'b', 'C', '^C', 'D', '_E', 'E', 'F', '^F',
-             'G', '^G', 'A', '_B', 'B', 'c\'', '^c\'', 'd\'', '_e\'', 'e\'', 'f\'', '^f\'', 'g\'']
-tonic = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E',
+lengths = [1, 2, 2, 2, 2, 3, 3, 3, 4]
+note_range = ['g', 'a', 'b', 'C', 'D', 'E', 'F',
+              'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'']
+letters = ['c', 'd', 'e', 'f']
+tonic = ['g', 'a', 'b', 'C', 'D', 'E',
          'F', 'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'']
-major_chord = ['c', 'e', 'g', 'C', 'E', 'G', 'c\'', 'e\'', 'g\'']
+major_chord = ['g', 'C', 'E', 'G', 'c\'', 'e\'']
 inner_range = note_range[12:24]
 harm_same_a = []
 harm_same_b = []
-#print(f'Length of note range: {len(note_range)}')
+
 accidentals = ['^', '_']
 t = 'T:' + 'title' + '\n'
 x = 'X:' + '1' + '\n'
@@ -57,13 +56,13 @@ def initial_abc_writer(filename):
         beats = 0
 
         if measures == 0:
-            music += 'c2'
+            music += 'C2'
             beats += 2
 
         while beats < 8:
 
             music += str(random.choice(note_range))
-            note_value = random.randint(1, 4)
+            note_value = random.choice(lengths)
 
             if (8-beats) < note_value:
                 note_value = 1
@@ -77,7 +76,7 @@ def initial_abc_writer(filename):
         measures += 1
 
     file_contents += music
-
+    #print(f'initialized music: {music}')
     abcfile = open(filename, 'w')
     abcfile.write(file_contents)
     abcfile.close()
@@ -118,15 +117,34 @@ def repair(measure):
     beats = 0
     note_beat = 0
     #measure = note_list(measure)
+    #measure = [i for i in measure if i]
+    #print(f'measure before repair: {measure}')
+
     i = 0
-    for i in measure:
-        if i in note_lengths:
-            beats += int(i)
+    while i < len(measure):
+        #print(f'measure i: {measure[i]}')
+
+        if measure[i] in note_lengths:
+            beats += int(measure[i])
             note_beat += 1
-        if i in note_range:
+            i += 1
+            
+        elif measure[i] in note_range:
             beats += 1
+            i += 1
+            
+        elif measure[i] in letters:
+            beats += 1
+            i += 1
+
+        else:
+            i += 1
+
     beats = beats - note_beat
+    #print(f'number of beats: {beats}')
+
     while beats < 8:
+        #print(f'not enough, adding more')
         measure += random.choice(note_range)
         beats += 1
 
@@ -134,23 +152,22 @@ def repair(measure):
     b2 = 0
     nb = 0
     i = 0
-    if beats > 8:
-        while b2 < 8 and i < len(measure):
-            if measure[i] in note_lengths:
-                b2 += int(measure[i])
-                nb += 1
-                new_meas += measure[i]
-                i += 1
-            if i in note_range:
-                b2 += 1
-                new_meas += measure[i]
-                i += 1
-            else:
-                new_meas += measure[i]
-                i += 1
-            b2 = b2 - nb
-        measure = new_meas
+    while beats > 8:
+        #print('too many, should be going down')
+        if measure[-1] in note_lengths:
+            beats -= int(measure[-1])
+            beats += 1
+            measure = measure.rstrip(measure[-1])
+        elif measure[-1] in note_range or measure[-1] in letters:
+            beats -= 1
+            measure = measure.rstrip(measure[-1])
+        else:
+            measure = measure.rstrip(measure[-1])
+            
+    measure = measure.replace('\'\'', '\'')
 
+
+    #print(f'measure after repair: {measure}')
     return measure
 
 
@@ -209,6 +226,7 @@ def adap_fit(filename):
     music = get_music(filename)
     penalty = 0
     music = music.split(' | ')
+    #print(f'music: {music}')
 
     '''
     A best note will be in both the inner range of notes (the middle octave) and the tonic scale.
@@ -218,15 +236,24 @@ def adap_fit(filename):
 
     best_notes = 0
     total_notes = 0
+    prev_note = note_range.index('C')
+    distance = 0
     for measure in music:
         #print(f'measure: {measure}')
         notes = note_list(measure)
+        notes = [i for i in notes if i]
+        
         #print(f'notes: {notes} in {filename}')
         for note in notes:
+            note = note.replace('\'\'', '\'')
+
+            if note in letters:
+                note += '\''
+
             if note in tonic:
-                penalty += -4
+                penalty += -1
             else:
-                penalty += 4
+                penalty += 1
 
             if note in inner_range:
                 penalty += -3
@@ -234,22 +261,27 @@ def adap_fit(filename):
                 penalty += 3
 
             if note in major_chord:
-                penalty += -1
+                penalty += -2
             else:
-                penalty += 1
+                penalty += 2
+
+            if note not in note_lengths:
+                note_index = note_range.index(note)
+                distance += abs(prev_note - note_index)
+                prev_note = note_range.index(note)
 
             total_notes += 1
 
-        if notes[len(notes)-1] in tonic:
-            penalty += -1
+    if note_range[prev_note] == 'C':
+        penalty += -2
 
-        if notes[[len(notes)-1][0]] == 'c':
-            penalty += -2
+    #penalty = (penalty/(total_notes*6))*100
+    fitness = (distance + penalty)/total_notes
 
-    penalty = (penalty/(total_notes*3))*100
+
     #print(f'total notes in {filename}: {total_notes}')
 
-    return penalty
+    return fitness
 
 
 '''
@@ -260,8 +292,13 @@ helper function that takes a string of notes and returns a list that has each no
 def note_list(items):
     #print(f'items: {items}')
     #replace ' with o for easier comprehension
+    items = repair(items)
+    #print(f'repaired items: {items}')
     items = items.replace('\'', 'o')
     items = [*items]
+
+    #print(f'items: {items}')
+    letters = ['c', 'd', 'e', 'f']
 
     '''save each note as an item in a list.
     iterate through the list, and for each value, save the distance in another list.
@@ -271,12 +308,6 @@ def note_list(items):
     i = 0
 
     while i < len(items):
-        if items[i] in accidentals:
-            #notes.append(note)
-            note = ''
-            note += items[i]
-            i += 1
-            continue
         if items[i] in note_range and items[i-1] not in accidentals:
             notes.append(note)
             note = ''
@@ -287,27 +318,37 @@ def note_list(items):
             note += '\''
             notes.append(note)
             note = ''
+            #print(f'item i 3: {items[i]}')
             i += 1
             continue
         if items[i] in note_range:
+            notes.append(items[i])
+            note = ''
             note += items[i]
             i += 1
-            continue
-        if items[i] in letters:
-            note += items[i]
-            i += i
+            #print(f'item i 4: {items[i]}')
             continue
         if items[i] in note_lengths:
             notes.append(note)
             notes.append(items[i])
             note = ''
+            #print(f'item i 5: {items[i]}')
             i += 1
+            continue
+        if items[i] in letters:
+            notes.append(items[i])
+            note =''
+            note += items[i] + '\''
+            #print(f'item i 6: {items[i]}')
+            i += 2
         else:
-            note += items[i]
-            notes.append(notes)
+            notes += items[i]
+            notes.append(items[i])
+            note = ''
             i += 1
-    notes = repair(notes)
-    #print(f'notes: {notes}')
+        
+    #notes = repair(notes)
+    #print(f'listed: {notes}')
     return notes
 
 
@@ -358,24 +399,7 @@ def open_file(filename):
     opened_file = open(filepath + filename, 'r')
     return opened_file
 
-def check_additions(note, n, change, new_measure):
-    acc = ''
-    oct = ''
-    
-    if change[n] == 0:
-        new_measure += note
-        n += 1
-    else:   
-        if note == '^':
-            acc = '^'
-       
-        if note == '_':
-            acc = '_'
-        
-        if note == '\'':
-            oct = '\''
-        
-    return note, acc, oct, new_measure
+
 '''
 mutation helper function. 
 takes in the filename, a list of measures, and the probability that a gene will be mutated.
@@ -400,16 +424,40 @@ def creep(filename, measures, gene_prob):
     m = 0
 
     new_music = []
+    low_edge = ['c', '^c', 'd', '^d']
+    up_edge = ['^g\'', 'a\'', '_b\'', 'b\'']
 
     for measure in measures:
+        #print(f'measure before mutation: {measure}')
         new_measure = ''
+        #print(f'list of notes: {measure}')
         notes = note_list(measure)
+        #print(f'notes: {notes}')
+        ##print(f'notes list: {notes}')
+        notes = [i for i in notes if i]
+        acc = ''
+        oct = ''
 
         for note in notes:
 
             #print(f' note: {note}')
-            note, acc, oct = check_additions(note, n, change, new_measure)
-
+            if note == "''" or note == '':
+                continue
+            if change[n] == 0:
+                new_measure += note
+                n += 1
+                continue
+            '''
+            if note == '^':
+                acc = '^'
+                continue
+            if note == '_':
+                acc = '_'
+                continue
+            if note == '\'':
+                oct = '\''
+                continue
+            '''
             if note in note_lengths:
                 new_measure += note
             else:
@@ -417,17 +465,19 @@ def creep(filename, measures, gene_prob):
                 if note_value not in note_range:
                     note_value = random.choice(note_range)
                 index = note_range.index(note_value)
-                if index > len(note_range) - 4:
-                    new_measure += note_range[index - 2]
-                elif index < 3:
-                    new_measure += note_range[index + 2]
+                if index > len(note_range)-2:
+                    new_measure += note_range[index - 1]
+                elif index < 2:
+                    new_measure += note_range[index + 1]
                 else:
                     #print(f'index: {index}')
-                    new_measure += note_range[index + random.choice([-2, 2])]
+                    new_measure += note_range[index + random.choice([-1, 1])]
+            
             n += 1
-        #print(f'new music: {new_measure}')
+        #print(f'new music after mutation: {new_measure}')
         #new_measure = [new_measure]
-        #print(f'new list measure: {new_measure}')
+        #print(f'new measure before repair: {new_measure}')
+
         new_measure = repair(new_measure)
         #print(f'repaired measure {new_measure}')
 
@@ -498,6 +548,9 @@ def uniform_crossover(individuals):
                 offspringm.append(m2)
             index += 1
 
+        for m in offspringm:
+            m = repair(m)
+
         #print(f'new music offspring: {offspringm}')
         abc_writer(individuals[ind], offspringm)
 
@@ -517,8 +570,9 @@ def ea(pop_size, individuals, mu, operators, tourn_size):
     #ranked = [x[0] for x in ranked]
     #best_parents = ranked[:num_best]
     #print(f'new parents: {best_parents}')
-    print(f'tournament selection')
+
     parents = tournament(individuals, tourn_size, mu)
+    #print(f'parents: {parents}')
     #parents = [p[0] for p in parents]
     #print(f'parents: {parents}')
     #parents = []
@@ -534,13 +588,12 @@ def ea(pop_size, individuals, mu, operators, tourn_size):
     offspring = parents
     #print(f'offspring: {offspring}')
     #offspring = [o[0] for o in offspring]
-
-    print(f'crossover time')
+    #print('crossover')
     if 'uniform_crossover' in operators:
         uniform_crossover(offspring)
-    print(f'mutation time')
+    #print('mutation')
     if 'creep_mutation' in operators:
-        creep_mutation(individuals, 0.6, 0.2)
+        creep_mutation(individuals, 0.5, 0.3)
 
     #evaled_ind = sort_by_fitness(individuals)
 
@@ -593,10 +646,10 @@ def print_statistics(population, gen, best_ind):
 
 
 def main():
-    pop_size = 20
+    pop_size = 100
     list_of_files = pop_initialization(pop_size)
 
-    num_gens = 5
+    num_gens = 300
     gen_counter = 1
     lbda = pop_size
     mu = int(pop_size/7)
@@ -608,10 +661,10 @@ def main():
     print('gen\tbest individual\t\t\taverage fitness\t\tworst individual')
     #repeat for each generation
     while gen_counter <= num_gens:
-        
+
         #send list of files to mu_comma_lambda for evaluation
         new_pop = ea(pop_size, new_pop, mu, [
-                     'uniform_crossover', 'creep_mutation'], tourn_size=2)
+                     'uniform_crossover', 'creep_mutation'], tourn_size=30)
         #print('gen number:' , gen_counter)
         best_ind = print_statistics(new_pop, gen_counter, best_ind)
 
@@ -631,9 +684,11 @@ if __name__ == '__main__':
     code_save = '/Users/lizyhoepfinger/Desktop/ECFinal/runs/CODE' + \
         now.strftime("%m_%d_%H%M") + '.txt'
 
-    #sys.stdout = open(dest, 'w')
+    sys.stdout = open(dest, 'w')
     print('file run: musicea.py')
     shutil.copy(src, code_save)
     main()
-    #s = converter.parse('best_ind.abc')
-    #s.show('midi')
+    s = converter.parse('best_ind.abc')
+    best = s.write('midi', '/Users/lizyhoepfinger/Desktop/ECFinal/best_ind.mid')
+#s.show('midi')
+   

@@ -9,29 +9,43 @@ from music21 import converter
 from datetime import datetime
 from itertools import chain
 
+'''
+declaring global variables that are used throughout methods. 
+these include population initialization, headers of the files, and filenames
+'''
 filepath = 'individuals/'
-global is_random 
-is_random = True
-global needs_first_tuple
-needs_first_tuple = False
+note_lengths = ['1', '2', '3', '4']
+note_range = ['c', '^c', 'd', '^d', 'e', 'f', '^f', 'g', '^g', 'a', '_b', 'b', 'C', '^C', 'D', '_E', 'E', 'F', '^F',
+              'G', '^G', 'A', '_B', 'B', 'c\'', '^c\'', 'd\'', '_e\'', 'e\'', 'f\'', '^f\'', 'g\'', '^g\'', 'a\'', '_b\'', 'b\'']
+#note_range = note_range[7:31]
+tonic = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E',
+         'F', 'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'']
+major_chord = ['c', 'e', 'g', 'C', 'E', 'G', 'c\'', 'e\'', 'g\'']
+inner_range = note_range[12:24]
+harm_same_a = []
+harm_same_b = []
+#print(f'Length of note range: {len(note_range)}')
+accidentals = ['^', '_']
+t = 'T:' + 'title' + '\n'
+x = 'X:' + '1' + '\n'
+k = 'K:' + 'C' + '\n'
+m = 'M:' + '4/4' + '\n'
+l = 'L:1/8\n'
+r = 'R:' + 'Reel' + '\n'
+q = 'Q:' + '100' + '\n'
 
-'''Creates the initial population of random abc individuals. This includes the headers of the abc files as well.'''
+header = x + t + m + q + l + r + k
+
+
+'''
+Creates the initial population of random abc individuals. 
+This method randomly adds appropriate notes to the individuals.
+This includes the headers of the abc files as well.
+'''
+
+
 def initial_abc_writer(filename):
-    t = 'T:' + 'title' + '\n'
-    x = 'X:' + '1' + '\n'
-    k = 'K:' + 'C' + '\n'
-    m = 'M:' + '4/4' + '\n'
-    l = 'L:1/8\n'
-    r = 'R:' + 'Reel' + '\n'
-    q = 'Q:' + 'speed' + '\n'
-
-    header = x + t + m + q + l + r + k
     file_contents = header
-    
-    note_range = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E', 'F',
-            'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
-
-    accidentals = ['^', '_']
 
     #starting with the first measure, write music. this is truly random. individuals will be saved in a .abc file
     music = ''
@@ -45,10 +59,6 @@ def initial_abc_writer(filename):
             beats += 2
 
         while beats < 8:
-            acc_prob = random.randint(1, 20)
-
-            if (acc_prob >= 19):
-                music += ' ' + accidentals[random.randint(0, 1)]
 
             music += str(random.choice(note_range))
             note_value = random.randint(1, 4)
@@ -66,37 +76,25 @@ def initial_abc_writer(filename):
 
     file_contents += music
 
-    #TEST
-    #print(str(filename) + ' contents: ' + file_contents)    
     abcfile = open(filename, 'w')
     abcfile.write(file_contents)
-    abcfile.close() 
+    abcfile.close()
 
-'''Writes the offspring to files overriding previous generation's files. This method
-also implements the header as well as the generated indivuals'''
+
+'''
+Writes the offspring to files overriding previous generation's files. 
+This method also implements the header as well as the generated indivuals.
+It takes in the filename and the generated notes and writes them to a file.
+'''
+
+
 def abc_writer(filename, notes):
-    t = 'T:' + 'title' + '\n'
-    x = 'X:' + '1' + '\n'
-    k = 'K:' + 'C' + '\n'
-    m = 'M:' + '4/4' + '\n'
-    l = 'L:1/8\n'
-    r = 'R:' + 'Reel' + '\n'
-    q = 'Q:' + 'speed' + '\n'
-
-    header = x + t + m + q + l + r + k
-    file_contents = header
 
     measure = 0
-    global needs_first_tuple
-    if needs_first_tuple == True:
-        path = filepath + filename[0]
-        #print('filename for writer: ', path)
-        offspring = open(path, 'w')
-    
-    else:
-        offspring = open(filepath + filename, 'w')
-
+    #print(f'filename: {filename}, filepath: {filepath}')
+    offspring = open(filepath + filename, 'w')
     offspring.write(header)
+    #print(f'notes: {notes}')
     while measure < len(notes):
         if measure == len(notes) - 1:
             offspring.write(notes[measure])
@@ -104,359 +102,544 @@ def abc_writer(filename, notes):
             offspring.write(notes[measure] + ' | ')
         measure += 1
 
-    
     offspring.close()
 
-'''randomly initializes a population
-uses initial_abc_writer()'''
+
+def get_music(file):
+    opened = open_file(file)
+    content = opened.readlines()
+    music = content[7]
+    return music
+
+
+def repair(measure):
+    beats = 0
+    note_beat = 0
+    #measure = note_list(measure)
+    i = 0
+    for i in measure:
+        if i in note_lengths:
+            beats += int(i)
+            note_beat += 1
+        if i in note_range:
+            beats += 1
+    beats = beats - note_beat
+    while beats < 8:
+        measure += random.choice(note_range)
+        beats += 1
+
+    new_meas = ''
+    b2 = 0
+    nb = 0
+    i = 0
+    
+    while beats > 8:
+            #print('too many, should be going down')
+        if measure[-1] in note_lengths:
+            beats -= int(measure[-1])
+            beats += 1
+            measure = measure.rstrip(measure[-1])
+        elif measure[-1] in note_range:
+            beats -= 1
+            measure = measure.rstrip(measure[-1])
+        else:
+            measure = measure.rstrip(measure[-1])
+
+    #measure = measure.replace('\'\'', '\'')
+    '''
+        while b2 < 8 and i < len(measure):
+            if measure[i] in note_lengths:
+                b2 += int(measure[i])
+                nb += 1
+                new_meas += measure[i]
+                i += 1
+            if i in note_range:
+                b2 += 1
+                new_meas += measure[i]
+                i += 1
+            else:
+                new_meas += measure[i]
+                i += 1
+            b2 = b2 - nb
+        measure = new_meas
+    '''
+
+    return measure
+
+
+'''
+This function implements a tournament selection to choose the new parents.
+It takes in the population, the desired tournament size, and the number of parents being chosen
+returns a list of parents (just filenames that contain the individual)
+'''
+
+
+def tournament(population, tourn_size, mu):
+    parents = []
+
+    for x in range(mu):
+        selected = []
+        best = ''
+        #generate tournsize number of random individuals from the population
+        for i in range(tourn_size):
+            selected.append(random.choice(population))
+        #choose the best individual in the tournament
+        selected = sorted(selected, key=lambda selected: selected[1])
+        #add best to the list of parents
+        parents.append(selected)
+
+    parents = [p[0] for p in parents]
+    #print(f'parents: {parents}')
+    return parents
+
+
+'''
+randomly initializes a population
+uses initial_abc_writer(). takes in the desired population size
+'''
+
+
 def pop_initialization(num_of_individuals):
     count = 1
-
+    file_list = []
     while count <= num_of_individuals:
-        title = 'individuals/individual' + str(count) + '.abc'
-        initial_abc_writer(title)
+        title = 'individual' + str(count) + '.abc'
+        initial_abc_writer(filepath + title)
+        file_list.append(title)
         count += 1
 
-'''Current fitness function, just measures the distance of each note from note to note'''
-def distance_fit(filename):
-    #find the value of each note
-    note_range = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E', 'F',
-             'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
-    #print('ind: ', filename)
-    #file = filename
-    #indfile = open(filepath + filename, 'r')
-    
-    if filename[0] == 'i':
-        indfile = open(filepath + filename, 'r')
-    else:
-        path = filepath + filename[0]
-        #print('filename for writer: ', path)
-        indfile = open(path, 'r')
-    '''
-    global needs_first_tuple
-    if needs_first_tuple == True:
-        path = filepath + filename[0]
-        print('filename for writer: ', path)
-        indfile = open(path, 'r')
-    else:
-        indfile = open(filepath + filename, 'r')
-    '''
-    #ind_file = filepath + filename
-    #print('ind_file: ', ind_file)
+    return file_list
 
-    #indfile = open(ind_file, 'r')
-    content = indfile.readlines()
-    items = content[7]
 
+def check_oct(note, oct):
+    if oct == '\'':
+        note += oct
+
+    return note
+
+
+def adap_fit(filename):
+    music = get_music(filename)
+    penalty = 0
+    music = music.split(' | ')
+
+    '''
+    A best note will be in both the inner range of notes (the middle octave) and the tonic scale.
+    Because each peice of music contains a different number of notes, the penalty achieved will be divided by the 
+    length of the notes in the piece (or the maximum penalty that can be achieved.) and the fitness will be based on that 
+    percentage score.'''
+
+    best_notes = 0
+    total_notes = 0
+    for measure in music:
+        #print(f'measure: {measure}')
+        notes = note_list(measure)
+        #print(f'notes: {notes} in {filename}')
+        for note in notes:
+            if note in tonic:
+                penalty += -1
+            else:
+                penalty += 1
+
+            if note in inner_range:
+                penalty += -3
+            else:
+                penalty += 1
+
+            if note in major_chord:
+                penalty += -1
+            else:
+                penalty += 1
+
+            total_notes += 1
+    penalty = (penalty/(total_notes*3))*100
+    #print(f'total notes in {filename}: {total_notes}')
+
+    return penalty
+
+
+'''
+helper function that takes a string of notes and returns a list that has each note value as its own item.
+'''
+
+
+def note_list(items):
+    #print(f'items: {items}')
+    #replace ' with o for easier comprehension
+    items = items.replace('\'', 'o')
+    items = [*items]
+
+    '''save each note as an item in a list.
+    iterate through the list, and for each value, save the distance in another list.
+    '''
+    note = ''
     notes = []
-    note_values = []
-
-    for item in items:
-        if item in note_range:
-            notes.append(item)
-            note_values.append(note_range.index(item))
-
-    '''find the distance between each note and the note after it'''
-    distance = 0
     i = 0
 
-    while i < len(note_values) - 1:
-        distance += abs(note_values[i] - note_values[i+1])
-        i += 1
+    while i < len(items):
+        if items[i] in accidentals:
+            #notes.append(note)
+            note = ''
+            note += items[i]
+            i += 1
+            continue
+        if items[i] in note_range and items[i-1] not in accidentals:
+            notes.append(note)
+            note = ''
+            note += items[i]
+            i += 1
+            continue
+        if items[i] == 'o':
+            note += '\''
+            notes.append(note)
+            note = ''
+            i += 1
+            continue
+        if items[i] in note_range:
+            note += items[i]
+            i += 1
+            continue
+        if items[i] in note_lengths:
+            notes.append(note)
+            notes.append(items[i])
+            note = ''
+            i += 1
 
-    distance += abs(note_values[len(note_values) - 1])
+        else:
+            note += items[i]
+            notes.append(notes)
+            i += 1
+    notes = repair(notes)
+    #print(f'notes: {notes}')
+    return notes
 
-    return distance
 
-'''sorts the fitness of all the files from best to worst. used in selection'''
+'''
+sorts the fitness of all the files from best to worst. used in selection.
+Takes in a list of filenames and returns a list of tuples that contain the filename and 
+its fitness in a ranked list.
+'''
+
+
 def sort_by_fitness(list_of_files):
     ind_fit = []
-    i = 0
-    new_list = []
 
-    #print('file list: ', list_of_files)
-    #remove old fitnesses for re-evaluation
-    #new_list = [x[0] for x in list_of_files]
-    #print(new_list)
-    
-    '''if file[1] = 0, then do current.
-    if not, then do the first of the tuple'''
     for ind in list_of_files:
-        fitness = distance_fit(ind)
+        fitness = adap_fit(ind)
         complete_ind = ind, fitness
         ind_fit.append(complete_ind)
-        '''
-        if len(ind[0]) == 3:
-            ind = ind[0][0]
-            #print('ind in fitness: ', ind)
-            fitness = distance_fit(ind)
-            complete_ind = ind, fitness
-            ind_fit.append(complete_ind)
-        else:
-            #print('ind in fitness: ', ind)
-            fitness = distance_fit(ind)
-            complete_ind = ind, fitness
-            ind_fit.append(complete_ind)
-            '''
-    '''
-    global is_random
-    global needs_first_tuple
-    if is_random == False:
-        for file, fitness in list_of_files:
-            fit_tup = file, distance_fit(file)
-            ind_fit.append(fit_tup)
-            needs_first_tuple = True
-            
-    else:
-        for file in list_of_files:
-            fit_tup = file, distance_fit(file)
-            print('fit_tup: ', fit_tup)
-            ind_fit.append(fit_tup)
-            is_random = False
-    '''
 
     ind_fit = sorted(ind_fit, key=lambda ind_fit: ind_fit[1])
+    #ind_fit.sort(key = lambda x: x[1])
+    #print(ind_fit)
 
     return ind_fit
 
-'''helper function to easily open files'''
+
+'''
+helper function to count the number of beats in a measure. 
+this checks to be sure we have accurate representations
+'''
+
+
+def beat_counter(measure):
+    beats = 0
+    for value in measure:
+        if value in note_lengths:
+            beats += int(value)
+        elif value in note_range:
+            beats += 1
+    return beats
+
+
+'''
+helper function to open a file
+'''
+
+
 def open_file(filename):
     opened_file = open(filepath + filename, 'r')
     return opened_file
 
-'''two point crossover, may be too aggressive for this field'''
-def two_point(ind1, ind2, child_files):
-    if len(child_files) > 0:
-        #print('ind1: ', ind1[0])
-        #print('length: ', len(ind1))
-        if len(ind1) == 2:
-            ind1 = ind1[0]
-            ind2 = ind2[0]
 
-        #read both individual files
-        ind1 = open_file(ind1)
-        ind2 = open_file(ind2)
+'''
+mutation helper function. 
+takes in the filename, a list of measures, and the probability that a gene will be mutated.
+'''
 
 
-        #read in the line of note values for each individual
-        content1 = ind1.readlines()
-        notes1 = content1[7]
-
-        content2 = ind2.readlines()
-        notes2 = content2[7]
-
-        #split both pieces into measures
-        notes1 = notes1.split(" | ")
-        notes2 = notes2.split(" | ")
-
-        offspr = []
-        note_num = 0
-
-        #performs the crossover operation by going through each note and performing a 2 point crossover
-        while note_num < len(notes1):
-            if note_num < 3:
-                offspr.append(notes1[note_num])
-            elif note_num > 2 & note_num < 6:
-                offspr.append(notes2[note_num])
-            else:
-                offspr.append(notes1[note_num])
-            note_num += 1
-
-        #print('offspring: ', offspr)
-        #write to the correct file, one of the unused child files.
-        
-        filename = child_files[-1]
-        child_files.pop()
-        
-        if len(filename) == 2:
-            filename = filename[0]
-
-        #print('filename: ', filename)
-
-        abc_writer(filename, offspr)
-        
-
-    return filename, child_files
-
-'''takes a list of measures and splits them into a list of a notes'''
-def split_measures(filename, measures, gene_prob):
-    note_range = ['c', 'd', 'e', 'f', 'g', 'a', 'b', 'C', 'D', 'E', 'F',
-                  'G', 'A', 'B', 'c\'', 'd\'', 'e\'', 'f\'', 'g\'', 'a\'', 'b\'']
+def creep(filename, measures, gene_prob):
     #print('filename: ', filename)
     n = 0
-    probs_note = []
-    while n < 100:
-        rand_mut = random.uniform(0, 1)
-        probs_note.append(rand_mut)
-        n += 1
-    
-    n = 0
+    change = []
+    rand_mut = [random.uniform(0, 1) for _ in range(100)]
+
+    if len(measures) > 8:
+        measures = measures.pop()
+
+    for prob in rand_mut:
+        if prob < gene_prob:
+            change.append(1)
+        else:
+            change.append(0)
+
     m = 0
+
     new_music = []
+    low_edge = ['c', '^c', 'd', '^d']
+    up_edge = ['^g\'', 'a\'', '_b\'', 'b\'']
 
     for measure in measures:
-        
-        notes = measure.split()
-        new_notes = ''
-        #values = notes in note_range
-        while m < len(notes):
-            if (notes[m] in note_range) and (probs_note[n] <= gene_prob):
-                up_down = random.randrange(-1, 1)
-                new = note_range.index(notes[m])
-                new_notes += note_range[new + up_down]
+        new_measure = ''
+        notes = note_list(measure)
+
+        ##print(f'notes list: {notes}')
+        #notes = [i for i in notes if i]
+        acc = ''
+        oct = ''
+
+        for note in notes:
+
+            #print(f' note: {note}')
+            if note == "''" or note == '':
+                continue
+            if change[n] == 0:
+                new_measure += note
                 n += 1
+                continue
+            if note == '^':
+                acc = '^'
+                continue
+            if note == '_':
+                acc = '_'
+                continue
+            if note == '\'':
+                oct = '\''
+                continue
+
+            if note in note_lengths:
+                new_measure += note
             else:
-                new_notes += notes[m]
-            m += 1
-        if new_notes == '':
-            new_notes = measure
-        #print('new measure: ', new_notes)    
-        new_music.append(new_notes)
-    #print('new_music: ', new_music)    
+                note_value = acc + note + oct
+                if note_value not in note_range:
+                    note_value = random.choice(note_range)
+                index = note_range.index(note_value)
+                if index > 33:
+                    new_measure += note_range[index - 2]
+                elif index < 3:
+                    new_measure += note_range[index + 2]
+                else:
+                    #print(f'index: {index}')
+                    new_measure += note_range[index + random.choice([-2, 2])]
+            n += 1
+        #print(f'new music: {new_measure}')
+        #new_measure = [new_measure]
+        #print(f'new list measure: {new_measure}')
+        new_measure = repair(new_measure)
+        #print(f'repaired measure {new_measure}')
+
+        new_music.append(new_measure)
+
+        #print(f'new music: {new_music}')
+
+        #new_music.append(' | ')
+
+    #print('new_music: ', new_music)
     abc_writer(filename, new_music)
 
-        
-'''future mutation operator'''
-def mutation(ind, mut_prob, gene_prob):
-    
-    probs_ind = random.uniform(0,1)
-    
-    if probs_ind <= mut_prob:
-        individual = open_file(ind)
-        content = individual.readlines()
-        music = content[7]
-        measures = music.split(' | ')
-        split_measures(ind, measures, gene_prob)
-    return ind
-                
-'''mu comma lambda selection. also runs the operator methods. this should be more user friendly and easier to change operators.'''
-def mu_comma_lambda(files, mu, lbda, xo, mut):
 
-    #sort the files by fitness in order to get mu parents
-    ranked = sort_by_fitness(files)
-    #save the best mu in a list
-    best_ind = []
-    i = 0
-    while i < mu:
-      best_ind.append(ranked[i][0])
-      i += 1
+'''
+creep mutation method: works by chosing sinlge notes from an individual 
+and either increasing or decreasing random notes within the file according to a predefined probability
+'''
 
-    lbda_children = []
-    new_pop = []
-    n= 0
-    list_counter = 1
 
-    children = files 
-
-    #print('children: ', children[0][0])
-
-    if len(children[0]) == 2:
-        children = [x[0] for x in children]
-        #print('children: ', children)
-
-    #find the top mu parents out of the ranked by fitness files. 
-    #takes the top 5 individuals and creates a list as long as will be needed for crossover
-    while n < lbda:
-        #if the length of the list is less than the number of parents minus one, increase the counter
-        if list_counter < mu - 1:
-            file1 = best_ind[list_counter]
-            file2 = best_ind[list_counter + 1]
-            list_counter += 1
-        #if on the last index of the best individuals, then start from the top of the list
+def creep_mutation(individuals, mut_prob, gene_prob):
+    offspring = []
+    for ind in individuals:
+        probs_ind = random.uniform(0, 1)
+        if probs_ind <= mut_prob:
+            music = get_music(ind)
+            measures = music.split(' | ')
+            if len(measures) > 8:
+                measures.pop()
+            #print(f'pre mutated measures: {measures}')
+            creep(ind, measures, gene_prob)
         else:
-            list_counter = 0
-            file1 = best_ind[list_counter]
-            file2 = best_ind[list_counter + 1]
-            list_counter += 1
-        
-        
-        #use the crossover operator
-        if xo == 'two_point':
-            offspring, children = two_point(file1, file2, children)
-        if xo != 'two_point':
-            offspring = children[n]
-            
-        #use the mutation operator
-        if mut == 'mutation':
-            offspring = mutation(offspring, 0.5, 0.5)
-            
-        lbda_children.append(offspring)
+            continue
 
-        #print('lambda children: ', lbda_children)
-        #assign fitness to new offspring
-        
-        #for ind in lbda_children:
-            #print('ind: ', ind)
-        fitness = distance_fit(offspring)
-        complete_ind = offspring, fitness
-        new_pop.append(complete_ind)
-       
-        n+=1
-        #print('n: ', n)
 
-    return new_pop
+'''crossover operator: similar to binary uniform crossover- measures are randomly chosen from each parent
+to generate an offspring'''
 
-def print_statistics(population, gen):
+
+def uniform_crossover(individuals):
+    ind = 0
+    while ind < len(individuals):
+
+        file1 = individuals[ind]
+        file2 = individuals[ind-1]
+
+        music1 = get_music(file1)
+        music2 = get_music(file2)
+
+        #swaps random measures between parents to create a child
+        measures1 = music1.split(' | ')
+        measures2 = music2.split(' | ')
+
+        #print(f'measures1: {measures1}')
+        #print(f'measures2: {measures2}')
+
+        probs = []
+        i = 0
+        while i < len(measures1):
+            probs.append(random.choice([0, 1]))
+            i += 1
+
+        offspringm = []
+        index = 0
+        for m1, m2 in zip(measures1, measures2):
+            if probs[index] == 0:
+                offspringm.append(m1)
+            else:
+                offspringm.append(m2)
+            index += 1
+
+        #print(f'new music offspring: {offspringm}')
+        abc_writer(individuals[ind], offspringm)
+
+        ind += 1
+
+
+'''
+the evolutionary algorithm: given a population size, will run an ea according to what the user defines.
+'''
+
+
+def ea(pop_size, individuals, mu, operators, tourn_size):
+
+    #new_pop = [x[0] for x in new_pop]
+    #ranked = sort_by_fitness(individuals)
+    #print(f'ranked fitnesses: {ranked}')
+    #ranked = [x[0] for x in ranked]
+    #best_parents = ranked[:num_best]
+    #print(f'new parents: {best_parents}')
+
+    parents = tournament(individuals, tourn_size, mu)
+    #parents = [p[0] for p in parents]
+    #print(f'parents: {parents}')
+    #parents = []
+    num_offspring = 0
+    if len(parents[0]) == 2:
+        for i in range(pop_size):
+            parents.append(random.choice(parents))
+        parents = [p[0] for p in parents]
+    else:
+        for i in range(pop_size):
+            parents.append(random.choice(parents))
+
+    offspring = parents
+    #print(f'offspring: {offspring}')
+    #offspring = [o[0] for o in offspring]
+
+    if 'uniform_crossover' in operators:
+        uniform_crossover(offspring)
+    if 'creep_mutation' in operators:
+        creep_mutation(individuals, 0.6, 0.2)
+
+    #evaled_ind = sort_by_fitness(individuals)
+
+    #determine fitness for each value
+    evaled_ind = []
+    for individual in individuals:
+        fitness = adap_fit(individual)
+        ind_tup = individual, fitness
+        evaled_ind.append(ind_tup)
+    #print(f'fitness: {evaled_ind}')
+
+    return evaled_ind
+
+
+'''
+helper function that prints out statistics of each run
+'''
+
+
+def print_statistics(population, gen, best_ind):
     best_individual = ''
-    best_fitness = 1000
+    best_fitness = 10000
     worst_fitness = 0
     worst_individual = ''
     all_fitnesses = []
 
+    file, best_fit = best_ind
+
+    previous_ind = 1000
     for individual, fitness in population:
-        if fitness < best_fitness:
+        if fitness < previous_ind:
+            previous_ind = fitness
             best_individual = individual
             best_fitness = fitness
         if fitness > worst_fitness:
             worst_individual = individual
             worst_fitness = fitness
+        if fitness < best_fit:
+            best_ind = individual, fitness
+            shutil.copy(filepath+individual,
+                        '/Users/lizyhoepfinger/Desktop/ECFinal/best_ind.abc')
         all_fitnesses.append(fitness)
 
     average_fitness = sum(all_fitnesses)/len(all_fitnesses)
 
-    statistics = f'{gen}\t{best_individual}, {best_fitness}\t{average_fitness}\t{worst_individual}, {worst_fitness}\t'
+    statistics = f'{gen}\t{best_individual}, {best_fitness}\t\t{average_fitness}\t\t{worst_individual}, {worst_fitness}\t'
     print(statistics)
 
+    return best_ind
+
+
 def main():
-    pop_initialization(21)
+    pop_size = 200
+    list_of_files = pop_initialization(pop_size)
 
-    num_gens = 4
+    num_gens = 300
     gen_counter = 1
-
-    #save filepath and list of all files in it
-    list_of_files = []
-
-    for file in os.listdir(filepath):
-        list_of_files.append(file)
-
+    lbda = pop_size
+    mu = int(pop_size/7)
+    file = ''
+    best_fitness = 1000
+    best_ind = file, best_fitness
     new_pop = list_of_files
-    
-    print('gen\tbest individual\taverage fitness\tworst individual')
+
+    print('gen\tbest individual\t\t\taverage fitness\t\tworst individual')
     #repeat for each generation
     while gen_counter <= num_gens:
 
         #send list of files to mu_comma_lambda for evaluation
-        new_pop = mu_comma_lambda(new_pop, 3, 21, 'two_point', 'mutation')
+        new_pop = ea(pop_size, new_pop, mu, [
+                     'uniform_crossover', 'creep_mutation'], tourn_size=70)
         #print('gen number:' , gen_counter)
-        print_statistics(new_pop, gen_counter)
+        best_ind = print_statistics(new_pop, gen_counter, best_ind)
 
+        new_pop = [n[0] for n in new_pop]
+        #drop tuple of fitness so the only list values are filenames
+        #new_pop = [x[0] for x in new_pop]
         gen_counter += 1
-        
+
+
 if __name__ == '__main__':
 
     #saves the current version of code and output for the records.
     now = datetime.now()
-    src = '/Users/lizyhoepfinger/Desktop/ECFinal/musicga.py'
-    dest = '/Users/lizyhoepfinger/Desktop/ECFinal/runs/' + now.strftime("%m_%d_%H%M") + '.txt'
-    code_save = '/Users/lizyhoepfinger/Desktop/ECFinal/runs/CODE' + now.strftime("%m_%d_%H%M") + '.txt'
-    
+    src = '/Users/lizyhoepfinger/Desktop/ECFinal/musicea.py'
+    dest = '/Users/lizyhoepfinger/Desktop/ECFinal/runs/EA' + \
+        now.strftime("%m_%d_%H%M") + '.txt'
+    code_save = '/Users/lizyhoepfinger/Desktop/ECFinal/runs/CODE' + \
+        now.strftime("%m_%d_%H%M") + '.txt'
+
     sys.stdout = open(dest, 'w')
+    print('file run: musicea.py')
     shutil.copy(src, code_save)
     main()
-    
-   
-    
-    
-
-
-        
+    s = converter.parse('best_ind.abc')
+    best = s.write(
+        'midi', '/Users/lizyhoepfinger/Desktop/ECFinal/best_ind.mid')
